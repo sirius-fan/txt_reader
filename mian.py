@@ -640,6 +640,7 @@ class NovelReader(QMainWindow):
             title, start, end = self.chapters[chapter_index]
             
             chapter_text = self.text_content[start:end]
+            chapter_text+=("\n\n---end---\n")  # 确保章节末尾有换行
             self.text_area.setPlainText(chapter_text)
             
             # 确保光标移动到文档开头
