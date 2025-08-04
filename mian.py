@@ -24,7 +24,7 @@ from PySide6.QtWidgets import (
     QToolBar, QFrame, QScrollArea, QSlider, QCheckBox, QComboBox
 )
 from PySide6.QtCore import Qt, QThread, Signal, QTimer, QSettings
-from PySide6.QtGui import QFont, QColor, QPalette, QAction, QIcon, QTextCursor
+from PySide6.QtGui import QFont, QColor, QPalette, QAction, QIcon, QTextCursor, QKeySequence
 
 
 DEBUG_MODE = False  # 是否启用调试模式
@@ -238,6 +238,31 @@ class NovelReader(QMainWindow):
         search_action.setShortcut("Ctrl+F")
         search_action.triggered.connect(self.show_search_panel)
         search_menu.addAction(search_action)
+        
+        # 导航菜单
+        nav_menu = menubar.addMenu("导航(&N)")
+        
+        prev_chapter_action = QAction("上一章(&P)", self)
+        prev_chapter_action.setShortcut("Ctrl+Left")
+        prev_chapter_action.triggered.connect(self.go_to_previous_chapter)
+        nav_menu.addAction(prev_chapter_action)
+        
+        next_chapter_action = QAction("下一章(&N)", self)
+        next_chapter_action.setShortcut("Ctrl+Right")
+        next_chapter_action.triggered.connect(self.go_to_next_chapter)
+        nav_menu.addAction(next_chapter_action)
+        
+        nav_menu.addSeparator()
+        
+        first_chapter_action = QAction("第一章(&F)", self)
+        first_chapter_action.setShortcut("Ctrl+Home")
+        first_chapter_action.triggered.connect(lambda: self.display_chapter(0))
+        nav_menu.addAction(first_chapter_action)
+        
+        last_chapter_action = QAction("最后一章(&L)", self)
+        last_chapter_action.setShortcut("Ctrl+End")
+        last_chapter_action.triggered.connect(lambda: self.display_chapter(len(self.chapters) - 1))
+        nav_menu.addAction(last_chapter_action)
     
     def create_toolbar(self):
         """创建工具栏"""
@@ -282,11 +307,19 @@ class NovelReader(QMainWindow):
         toolbar.addSeparator()
         
         # 章节导航
+        prev_chapter_btn = QPushButton("上一章")
+        prev_chapter_btn.clicked.connect(lambda: self.go_to_previous_chapter())
+        toolbar.addWidget(prev_chapter_btn)
+        
         toolbar.addWidget(QLabel("章节:"))
         self.chapter_combo = QComboBox()
         self.chapter_combo.setMinimumWidth(200)
         self.chapter_combo.currentIndexChanged.connect(self.jump_to_chapter)
         toolbar.addWidget(self.chapter_combo)
+        
+        next_chapter_btn = QPushButton("下一章")
+        next_chapter_btn.clicked.connect(lambda: self.go_to_next_chapter())
+        toolbar.addWidget(next_chapter_btn)
     
     def create_main_widget(self):
         """创建主界面"""
@@ -315,6 +348,10 @@ class NovelReader(QMainWindow):
         self.text_area = QTextEdit()
         self.text_area.setReadOnly(True)
         self.text_area.setFont(QFont("微软雅黑", 12))
+        
+        # 安装事件过滤器以处理滚轮和键盘事件
+        self.text_area.installEventFilter(self)
+        
         splitter.addWidget(self.text_area)
         
         # 设置分割器比例
@@ -371,6 +408,89 @@ class NovelReader(QMainWindow):
         
         # 连接光标位置变化信号
         self.text_area.cursorPositionChanged.connect(self.update_position_info)
+    
+    def eventFilter(self, obj, event):
+        """事件过滤器，处理滚轮和键盘事件"""
+        if obj == self.text_area:
+            if event.type() == event.Type.Wheel:
+                return self.handle_wheel_event(event)
+            elif event.type() == event.Type.KeyPress:
+                return self.handle_key_event(event)
+        return super().eventFilter(obj, event)
+    
+    def handle_wheel_event(self, event):
+        """处理滚轮事件"""
+        # 获取滚动条
+        scrollbar = self.text_area.verticalScrollBar()
+        
+        # 向下滚动且已到底部
+        if event.angleDelta().y() < 0 and scrollbar.value() >= scrollbar.maximum():
+            if self.can_go_to_next_chapter():
+                self.go_to_next_chapter()
+                return True  # 阻止默认滚动行为
+        
+        # 向上滚动且已到顶部
+        elif event.angleDelta().y() > 0 and scrollbar.value() <= scrollbar.minimum():
+            if self.can_go_to_previous_chapter():
+                self.go_to_previous_chapter()
+                return True  # 阻止默认滚动行为
+        
+        return False  # 允许默认滚动行为
+    
+    def handle_key_event(self, event):
+        """处理键盘事件"""
+        key = event.key()
+        scrollbar = self.text_area.verticalScrollBar()
+        
+        # PageDown 或 Down 键且已到底部
+        if (key in [Qt.Key_PageDown, Qt.Key_Down] and 
+            scrollbar.value() >= scrollbar.maximum()):
+            if self.can_go_to_next_chapter():
+                self.go_to_next_chapter()
+                return True  # 阻止默认行为
+        
+        # PageUp 或 Up 键且已到顶部
+        elif (key in [Qt.Key_PageUp, Qt.Key_Up] and 
+              scrollbar.value() <= scrollbar.minimum()):
+            if self.can_go_to_previous_chapter():
+                self.go_to_previous_chapter()
+                return True  # 阻止默认行为
+        
+        return False  # 允许默认行为
+    
+    def can_go_to_next_chapter(self):
+        """检查是否可以跳转到下一章"""
+        return self.current_chapter < len(self.chapters) - 1
+    
+    def can_go_to_previous_chapter(self):
+        """检查是否可以跳转到上一章"""
+        return self.current_chapter > 0
+    
+    def go_to_next_chapter(self):
+        """跳转到下一章"""
+        if self.can_go_to_next_chapter():
+            next_chapter = self.current_chapter + 1
+            self.display_chapter(next_chapter)
+            
+            # 显示提示信息
+            chapter_title = self.chapters[next_chapter][0]
+            self.status_bar.showMessage(f"已跳转到下一章: {chapter_title}", 2000)
+            print_debug(f"自动跳转到下一章: {next_chapter}")
+    
+    def go_to_previous_chapter(self):
+        """跳转到上一章"""
+        if self.can_go_to_previous_chapter():
+            prev_chapter = self.current_chapter - 1
+            self.display_chapter(prev_chapter)
+            
+            # 跳转到上一章的末尾
+            scrollbar = self.text_area.verticalScrollBar()
+            scrollbar.setValue(scrollbar.maximum())
+            
+            # 显示提示信息
+            chapter_title = self.chapters[prev_chapter][0]
+            self.status_bar.showMessage(f"已跳转到上一章: {chapter_title}", 2000)
+            print_debug(f"自动跳转到上一章: {prev_chapter}")
     
     def detect_encoding(self, file_path):
         """
@@ -521,7 +641,14 @@ class NovelReader(QMainWindow):
             
             chapter_text = self.text_content[start:end]
             self.text_area.setPlainText(chapter_text)
-            self.text_area.moveCursor(QTextCursor.Start)
+            
+            # 确保光标移动到文档开头
+            cursor = self.text_area.textCursor()
+            cursor.movePosition(QTextCursor.Start)
+            self.text_area.setTextCursor(cursor)
+            
+            # 确保滚动到顶部
+            self.text_area.verticalScrollBar().setValue(0)
             
             # 更新章节选择
             self.chapter_combo.setCurrentIndex(chapter_index)
@@ -536,6 +663,7 @@ class NovelReader(QMainWindow):
                     item.setSelected(False)
             
             self.update_position_info()
+            print_debug(f"显示章节 {chapter_index}: {title}")
     
     def on_chapter_clicked(self, item, column):
         """章节列表点击事件"""
