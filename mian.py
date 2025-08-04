@@ -27,6 +27,14 @@ from PySide6.QtCore import Qt, QThread, Signal, QTimer, QSettings
 from PySide6.QtGui import QFont, QColor, QPalette, QAction, QIcon, QTextCursor
 
 
+DEBUG_MODE = False  # 是否启用调试模式
+
+def print_debug(message: str):
+    """打印调试信息"""
+    if DEBUG_MODE:
+        print(f"[DEBUG] {message}")
+
+
 class ChapterParser:
     """章节解析器"""
     
@@ -51,11 +59,13 @@ class ChapterParser:
         combined_pattern = '|'.join(f'({pattern})' for pattern in patterns)
         
         lines = text.split('\n')
+        print_debug(f"Lines to process: {(lines)}")  # Debug output
         current_pos = 0
         
         for i, line in enumerate(lines):
-            line = line.strip()
-            if line and re.match(combined_pattern, line, re.IGNORECASE):
+            line_match = line.strip()
+            if line_match and re.match(combined_pattern, line_match, re.IGNORECASE):
+                print_debug(f"Found chapter: {line} (pos: {current_pos})")  # Debug output
                 if chapters:
                     # 更新上一章的结束位置
                     chapters[-1] = (chapters[-1][0], chapters[-1][1], current_pos)
@@ -63,7 +73,10 @@ class ChapterParser:
                 chapters.append((line, current_pos, len(text)))
             
             current_pos += len(line) + 1  # +1 for newline
-        
+            print_debug(f"Processing line {i+1}: {line} (pos: {current_pos})")  # Debug output
+
+        print_debug(f"Total chapters found: {chapters}")  # Debug output
+
         # 如果没有找到章节，将整个文本作为一章
         if not chapters:
             chapters.append(("全文", 0, len(text)))
@@ -385,7 +398,7 @@ class NovelReader(QMainWindow):
             detected_encoding = detected.get('encoding', '').lower()
             confidence = detected.get('confidence', 0)
             
-            print(f"Chardet 检测结果: {detected_encoding}, 置信度: {confidence}")
+            print_debug(f"Chardet 检测结果: {detected_encoding}, 置信度: {confidence}")
             
             # 如果 chardet 检测置信度很高，直接使用
             if confidence > 0.8 and detected_encoding:
@@ -566,7 +579,7 @@ class NovelReader(QMainWindow):
         try:
             result = QFontDialog.getFont(current_font, self, "选择字体")
             
-            # QFontDialog.getFont 返回 (font, ok) 元组
+            # QFontDialog.getFont 返回 (ok, font) 元组，而不是(font, ok) 元组
             if isinstance(result, tuple) and len(result) == 2:
                 ok,font = result
                 
