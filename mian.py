@@ -231,6 +231,16 @@ class NovelReader(QMainWindow):
         sepia_theme.triggered.connect(self.apply_sepia_theme)
         theme_menu.addAction(sepia_theme)
         
+        view_menu.addSeparator()
+        
+        # 侧边栏显示控制
+        self.sidebar_action = QAction("显示侧边栏(&S)", self)
+        self.sidebar_action.setShortcut("F9")
+        self.sidebar_action.setCheckable(True)
+        self.sidebar_action.setChecked(True)  # 默认显示
+        self.sidebar_action.triggered.connect(self.toggle_sidebar)
+        view_menu.addAction(self.sidebar_action)
+        
         # 搜索菜单
         search_menu = menubar.addMenu("搜索(&S)")
         
@@ -306,6 +316,13 @@ class NovelReader(QMainWindow):
         
         toolbar.addSeparator()
         
+        # 侧边栏切换
+        self.sidebar_toggle_btn = QPushButton("隐藏目录")
+        self.sidebar_toggle_btn.clicked.connect(self.toggle_sidebar)
+        toolbar.addWidget(self.sidebar_toggle_btn)
+        
+        toolbar.addSeparator()
+        
         # 章节导航
         prev_chapter_btn = QPushButton("上一章")
         prev_chapter_btn.clicked.connect(lambda: self.go_to_previous_chapter())
@@ -333,16 +350,16 @@ class NovelReader(QMainWindow):
         main_layout.addWidget(self.search_frame)
         
         # 创建分割器
-        splitter = QSplitter(Qt.Horizontal)
+        self.splitter = QSplitter(Qt.Horizontal)
         main_layout.addLayout(QHBoxLayout())
-        main_layout.addWidget(splitter)
+        main_layout.addWidget(self.splitter)
         
         # 章节列表
         self.chapter_tree = QTreeWidget()
         self.chapter_tree.setHeaderLabel("章节目录")
         self.chapter_tree.setMaximumWidth(300)
         self.chapter_tree.itemClicked.connect(self.on_chapter_clicked)
-        splitter.addWidget(self.chapter_tree)
+        self.splitter.addWidget(self.chapter_tree)
         
         # 文本显示区域
         self.text_area = QTextEdit()
@@ -352,10 +369,13 @@ class NovelReader(QMainWindow):
         # 安装事件过滤器以处理滚轮和键盘事件
         self.text_area.installEventFilter(self)
         
-        splitter.addWidget(self.text_area)
+        self.splitter.addWidget(self.text_area)
         
         # 设置分割器比例
-        splitter.setSizes([300, 900])
+        self.splitter.setSizes([300, 900])
+        
+        # 保存侧边栏状态
+        self.sidebar_visible = True
     
     def create_search_panel(self):
         """创建搜索面板"""
@@ -491,6 +511,29 @@ class NovelReader(QMainWindow):
             chapter_title = self.chapters[prev_chapter][0]
             self.status_bar.showMessage(f"已跳转到上一章: {chapter_title}", 2000)
             print_debug(f"自动跳转到上一章: {prev_chapter}")
+    
+    def toggle_sidebar(self):
+        """切换侧边栏显示/隐藏"""
+        self.sidebar_visible = not self.sidebar_visible
+        
+        if self.sidebar_visible:
+            # 显示侧边栏
+            self.chapter_tree.show()
+            self.splitter.setSizes([300, 900])
+            self.sidebar_toggle_btn.setText("隐藏目录")
+            self.sidebar_action.setText("隐藏侧边栏(&S)")
+            self.sidebar_action.setChecked(True)
+            self.status_bar.showMessage("已显示章节目录", 1000)
+            print_debug("显示侧边栏")
+        else:
+            # 隐藏侧边栏
+            self.chapter_tree.hide()
+            self.splitter.setSizes([0, 1200])
+            self.sidebar_toggle_btn.setText("显示目录")
+            self.sidebar_action.setText("显示侧边栏(&S)")
+            self.sidebar_action.setChecked(False)
+            self.status_bar.showMessage("已隐藏章节目录", 1000)
+            print_debug("隐藏侧边栏")
     
     def detect_encoding(self, file_path):
         """
@@ -895,6 +938,11 @@ class NovelReader(QMainWindow):
         palette.setColor(QPalette.Base, QColor(bg_color))
         palette.setColor(QPalette.Text, QColor(text_color))
         self.text_area.setPalette(palette)
+        
+        # 恢复侧边栏状态
+        sidebar_visible = self.settings.value("sidebar_visible", "true") == "true"
+        if not sidebar_visible:
+            self.toggle_sidebar()  # 如果应该隐藏，则切换状态
     
     def save_settings(self):
         """保存设置"""
@@ -909,6 +957,9 @@ class NovelReader(QMainWindow):
         palette = self.text_area.palette()
         self.settings.setValue("bg_color", palette.color(QPalette.Base).name())
         self.settings.setValue("text_color", palette.color(QPalette.Text).name())
+        
+        # 保存侧边栏状态
+        self.settings.setValue("sidebar_visible", self.sidebar_visible)
     
     def closeEvent(self, event):
         """关闭事件"""
