@@ -2,7 +2,7 @@
 
 一个简单的功能完整的TXT文本小说阅读器，使用 PySide6 开发。
 
-![Screenshot_2025-08-05_11:16:55.png](Screenshot_2025-08-05_11:16:55.png)
+![Screenshot.png](https://github.com/sirius-fan/txt_reader/blob/master/Screenshot.png)
 
 ## 功能特性
 
@@ -40,4 +40,56 @@
   - 灵活的阅读区域大小调整
   - 专注阅读模式支持
 - **设置持久化**: 自动保存和恢复用户所有自定义设置
+
+### 🔍 搜索功能
+- **全文搜索**: 支持对整本小说进行关键词搜索
+- **搜索导航**: 搜索结果高亮显示，支持上一个/下一个结果跳转
+- **实时反馈**: 显示搜索进度和结果数量
+
+### ⌨️ 快捷键
+- `F9`: 切换侧边栏显示/隐藏
+- `Ctrl+O`: 打开文件
+- `Ctrl+F`: 全文搜索
+- `Ctrl+←`: 上一章
+- `Ctrl+→`: 下一章  
+- `Ctrl+Home`: 第一章
+- `Ctrl+End`: 最后一章
+
+## 📦 安装和运行
+
+### 方式一：直接运行（推荐）
+下载预编译的可执行文件，无需安装Python环境：
+
+1. 下载 `NovelReader_Portable` 文件夹
+2. 运行 `./小说阅读器` 或 `./启动.sh`
+3. 开始阅读！
+
+### 方式二：从源码运行
+需要Python 3.7+环境：
+
+```bash
+# 克隆项目
+git clone <项目地址>
+cd txt_reader
+
+# 安装依赖
+pip install -r requirements.txt
+
+# 运行程序
+python main.py
+```
+
+### 方式三：自己打包
+如果需要自己打包为可执行文件：
+
+```bash
+# 快速打包（Linux/macOS）
+chmod +x build.sh
+./build.sh
+
+# 或使用Python脚本（跨平台）
+python build_app.py
+```
+
+详细打包说明请参考 [PACKAGING.md](PACKAGING.md)
 

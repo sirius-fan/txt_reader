@@ -70,7 +70,7 @@
 
 #### 方法二：直接运行Python
 ```bash
-./.venv/bin/python mian.py
+./.venv/bin/python main.py
 ```
 
 ## 使用说明
